@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Колесо решений</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --bg: var(--tg-theme-bg-color, #0f1115);
+    --card: var(--tg-theme-secondary-bg-color, #1a1d24);
+    --text: var(--tg-theme-text-color, #f2f4f8);
+    --hint: var(--tg-theme-hint-color, #8b93a7);
+    --accent: var(--tg-theme-button-color, #4f8cff);
+    --accent-text: var(--tg-theme-button-text-color, #ffffff);
+    --radius:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);color:var(--text);
+    padding:18px 16px calc(20px + env(safe-area-inset-bottom));min-height:100vh;
+  }
+  .wrap{max-width:520px;margin:0 auto}
+  h1{font-size:22px;line-height:1.2;margin:4px 0 2px}
+  .sub{color:var(--hint);font-size:14px;margin:0 0 16px}
+
+  /* колесо */
+  .stage{position:relative;width:100%;max-width:340px;margin:0 auto 8px;aspect-ratio:1/1}
+  canvas{width:100%;height:100%;display:block;border-radius:50%;
+    box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .pin{position:absolute;top:-4px;left:50%;transform:translateX(-50%);
+    width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;
+    border-top:22px solid var(--accent);filter:drop-shadow(0 2px 3px rgba(0,0,0,.4));z-index:3}
+  .hub{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:54px;height:54px;border-radius:50%;background:var(--bg);
+    border:3px solid var(--card);display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:700;color:var(--text);cursor:pointer;z-index:2;user-select:none}
+  .hub:active{transform:translate(-50%,-50%) scale(.94)}
+
+  .spin{
+    display:block;width:100%;border:none;cursor:pointer;
+    background:var(--accent);color:var(--accent-text);
+    font-size:17px;font-weight:700;padding:16px;border-radius:var(--radius);margin:6px 0 18px
+  }
+  .spin:disabled{opacity:.5;cursor:default}
+
+  /* варианты */
+  .label{font-size:13px;color:var(--hint);margin:0 0 8px;text-transform:uppercase;letter-spacing:.04em}
+  .presets{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .preset{background:var(--card);color:var(--text);border:none;border-radius:20px;
+    padding:8px 14px;font-size:13px;cursor:pointer}
+  .preset:active{transform:scale(.96)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .chip{display:inline-flex;align-items:center;gap:7px;background:var(--card);
+    border-radius:12px;padding:9px 10px 9px 13px;font-size:14px}
+  .chip button{border:none;background:transparent;color:var(--hint);font-size:18px;
+    line-height:1;cursor:pointer;padding:0 2px}
+  .add{display:flex;gap:8px;margin-bottom:22px}
+  .add input{flex:1;background:var(--card);border:1px solid transparent;color:var(--text);
+    border-radius:12px;padding:13px;font-size:15px;outline:none}
+  .add input:focus{border-color:var(--accent)}
+  .add button{background:var(--card);color:var(--accent);border:none;border-radius:12px;
+    padding:0 18px;font-size:24px;font-weight:600;cursor:pointer}
+
+  /* рефка — фоновый блок */
+  .ref{display:flex;align-items:center;gap:12px;text-decoration:none;
+    background:var(--card);border-radius:var(--radius);padding:14px 16px;color:var(--text)}
+  .ref .ico{font-size:22px}
+  .ref .t{flex:1;font-size:13px;line-height:1.35}
+  .ref .t b{display:block;font-size:15px}
+  .ref .t span{color:var(--hint)}
+  .ref .go{color:var(--accent);font-weight:700;font-size:14px;white-space:nowrap}
+
+  /* оверлей результата */
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;
+    align-items:center;justify-content:center;padding:24px;z-index:10}
+  .overlay.show{display:flex;animation:fade .2s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .modal{background:var(--card);border-radius:22px;padding:26px 22px;text-align:center;
+    max-width:340px;width:100%;animation:pop .3s cubic-bezier(.2,1.3,.4,1)}
+  @keyframes pop{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+  .modal .em{font-size:40px}
+  .modal h2{margin:8px 0 2px;font-size:14px;color:var(--hint);font-weight:600}
+  .modal .win{font-size:26px;font-weight:800;margin:0 0 18px;word-break:break-word}
+  .modal .again{background:var(--accent);color:var(--accent-text);border:none;
+    width:100%;padding:15px;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:8px}
+  .modal .close{background:transparent;color:var(--hint);border:none;font-size:14px;cursor:pointer;padding:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎡 Колесо решений</h1>
+  <p class="sub">Не можешь выбрать — крути колесо. Оно решит за тебя.</p>
+
+  <div class="stage">
+    <div class="pin"></div>
+    <canvas id="wheel" width="680" height="680"></canvas>
+    <div class="hub" id="hub">Крути</div>
+  </div>
+  <button class="spin" id="spin">Крутить 🎲</button>
+
+  <p class="label">Варианты</p>
+  <div class="presets" id="presets"></div>
+  <div class="chips" id="chips"></div>
+  <div class="add">
+    <input id="inp" type="text" placeholder="Добавить вариант…" maxlength="24" autocomplete="off">
+    <button id="addBtn">＋</button>
+  </div>
+
+  <a class="ref" href="https://platipomiru.com/?code=THTPR6XB" target="_blank" rel="noopener">
+    <span class="ico">💳</span>
+    <span class="t"><b>Оплатить зарубежный сервис из РФ</b><span>ChatGPT, Spotify, Steam — без своей карты</span></span>
+    <span class="go">Плати по миру →</span>
+  </a>
+</div>
+
+<!-- результат -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="em">🎉</div>
+    <h2>Выпало</h2>
+    <p class="win" id="winText"></p>
+    <button class="again" id="again">Крутить ещё</button>
+    <button class="close" id="close">Закрыть</button>
+  </div>
+</div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+  if (tg){ tg.ready(); tg.expand(); }
+
+  const PRESETS = {
+    "🍽 Что поесть": ["Пицца","Суши","Бургер","Паста","Шаурма","Салат"],
+    "🎬 Чем заняться": ["Фильм","Прогулка","Игра","Книга","Поспать","Спорт"],
+    "🪙 Орёл / решка": ["Орёл","Решка"],
+    "👋 Кто первый": ["Я","Ты","Не я"],
+  };
+  const COLORS = ["#4f8cff","#ff6b6b","#ffd166","#51cf66","#cc5de8","#22b8cf","#ff922b","#94d82d","#e64980","#15aabf"];
+
+  const cv = document.getElementById('wheel');
+  const ctx = cv.getContext('2d');
+  const SIZE = cv.width, R = SIZE/2 - 6, CX = SIZE/2, CY = SIZE/2;
+
+  let opts = load();
+  let rot = -Math.PI/2;      // текущий угол поворота
+  let spinning = false;
+
+  function load(){
+    try{ const s = JSON.parse(localStorage.getItem('wheel_opts')); if(Array.isArray(s)&&s.length) return s.slice(0,10); }catch(e){}
+    return ["Пицца","Суши","Бургер","Паста"];
+  }
+  function save(){ try{ localStorage.setItem('wheel_opts', JSON.stringify(opts)); }catch(e){} }
+
+  function draw(){
+    const N = opts.length;
+    const seg = (2*Math.PI)/N;
+    ctx.clearRect(0,0,SIZE,SIZE);
+    ctx.save(); ctx.translate(CX,CY); ctx.rotate(rot);
+    for(let i=0;i<N;i++){
+      const a0 = i*seg, a1 = a0+seg;
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.arc(0,0,R,a0,a1); ctx.closePath();
+      ctx.fillStyle = COLORS[i%COLORS.length]; ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,.12)"; ctx.lineWidth = 2; ctx.stroke();
+      // текст
+      ctx.save(); ctx.rotate(a0+seg/2);
+      ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillStyle='#fff';
+      const fs = Math.max(16, Math.min(30, 240/N + 10));
+      ctx.font = `700 ${fs}px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif`;
+      let label = opts[i]; if(label.length>12) label = label.slice(0,11)+'…';
+      ctx.shadowColor='rgba(0,0,0,.35)'; ctx.shadowBlur=4;
+      ctx.fillText(label, R-18, 0);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  function renderChips(){
+    document.getElementById('chips').innerHTML = opts.map((o,i)=>
+      `<span class="chip">${escapeHtml(o)}<button data-i="${i}" aria-label="удалить">×</button></span>`).join('');
+    document.querySelectorAll('.chip button').forEach(b=>b.addEventListener('click',()=>{
+      opts.splice(+b.dataset.i,1); save(); renderChips(); draw();
+    }));
+    document.getElementById('spin').disabled = opts.length<2;
+  }
+  function renderPresets(){
+    document.getElementById('presets').innerHTML = Object.keys(PRESETS).map(k=>
+      `<button class="preset" data-k="${k}">${k}</button>`).join('');
+    document.querySelectorAll('.preset').forEach(b=>b.addEventListener('click',()=>{
+      opts = PRESETS[b.dataset.k].slice(); save(); renderChips(); draw();
+      tg?.HapticFeedback?.selectionChanged?.();
+    }));
+  }
+  function escapeHtml(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+  function addOpt(){
+    const inp = document.getElementById('inp');
+    const v = inp.value.trim();
+    if(!v) return;
+    if(opts.length>=10){ inp.value=''; return; }
+    opts.push(v); inp.value=''; save(); renderChips(); draw();
+  }
+
+  function spin(){
+    const N = opts.length;
+    if(N<2 || spinning) return;
+    spinning = true;
+    document.getElementById('spin').disabled = true;
+    const seg = (2*Math.PI)/N;
+    const target = Math.floor(Math.random()*N);
+    const pointer = -Math.PI/2;                 // указатель сверху
+    const center  = target*seg + seg/2;         // центр сектора (локально)
+    const desired = pointer - center;           // нужный угол (mod 2π)
+    const start = rot;
+    const minTurns = 5;
+    const targetMin = start + minTurns*2*Math.PI;
+    const k = Math.ceil((targetMin - desired)/(2*Math.PI));
+    const end = desired + k*2*Math.PI;
+
+    const dur = 4200, t0 = performance.now();
+    const ease = t => 1 - Math.pow(1-t, 3);
+    let lastTick = 0;
+    function frame(now){
+      const p = Math.min(1, (now-t0)/dur);
+      rot = start + (end-start)*ease(p);
+      draw();
+      const tick = Math.floor(rot/seg);
+      if(tick!==lastTick){ lastTick=tick; tg?.HapticFeedback?.impactOccurred?.('light'); }
+      if(p<1){ requestAnimationFrame(frame); }
+      else { rot = end % (2*Math.PI); spinning=false; document.getElementById('spin').disabled=false; win(opts[target]); }
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function win(text){
+    document.getElementById('winText').textContent = text;
+    document.getElementById('overlay').classList.add('show');
+    tg?.HapticFeedback?.notificationOccurred?.('success');
+  }
+
+  // события
+  document.getElementById('spin').addEventListener('click', spin);
+  document.getElementById('hub').addEventListener('click', spin);
+  document.getElementById('addBtn').addEventListener('click', addOpt);
+  document.getElementById('inp').addEventListener('keydown', e=>{ if(e.key==='Enter') addOpt(); });
+  document.getElementById('again').addEventListener('click', ()=>{ document.getElementById('overlay').classList.remove('show'); setTimeout(spin,150); });
+  document.getElementById('close').addEventListener('click', ()=> document.getElementById('overlay').classList.remove('show'));
+  document.getElementById('overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') document.getElementById('overlay').classList.remove('show'); });
+
+  renderPresets(); renderChips(); draw();
+</script>
+</body>
+</html>

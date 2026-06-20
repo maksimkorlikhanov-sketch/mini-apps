@@ -2,25 +2,65 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Мини-приложения</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Полезные мини-приложения</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
-    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    background:#0f1115;color:#f2f4f8;padding:24px}
-  .box{max-width:420px;text-align:center}
-  h1{font-size:22px;margin:0 0 8px}
-  p{color:#8b93a7;font-size:14px;margin:0 0 20px}
-  a{display:block;background:#1a1d24;color:#f2f4f8;text-decoration:none;
-    padding:16px;border-radius:16px;margin-bottom:10px;font-weight:600}
+  :root{
+    --bg: var(--tg-theme-bg-color, #0f1115);
+    --card: var(--tg-theme-secondary-bg-color, #1a1d24);
+    --text: var(--tg-theme-text-color, #f2f4f8);
+    --hint: var(--tg-theme-hint-color, #8b93a7);
+    --accent: var(--tg-theme-button-color, #4f8cff);
+    --radius:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);color:var(--text);
+    padding:22px 16px calc(20px + env(safe-area-inset-bottom));min-height:100vh;
+  }
+  .wrap{max-width:520px;margin:0 auto}
+  h1{font-size:23px;line-height:1.2;margin:6px 0 4px}
+  .sub{color:var(--hint);font-size:14px;margin:0 0 22px}
+  .list{display:flex;flex-direction:column;gap:10px}
+  .app{display:flex;align-items:center;gap:14px;text-decoration:none;color:var(--text);
+    background:var(--card);border-radius:var(--radius);padding:16px;
+    transition:transform .08s ease}
+  .app:active{transform:scale(.985)}
+  .app .ico{font-size:26px;width:46px;height:46px;flex:none;border-radius:12px;
+    background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center}
+  .app .meta{flex:1;min-width:0}
+  .app .meta b{display:block;font-size:16px;margin-bottom:2px}
+  .app .meta span{color:var(--hint);font-size:13px;line-height:1.35;display:block}
+  .app .arr{color:var(--hint);font-size:20px;flex:none}
+  .foot{color:var(--hint);font-size:12px;text-align:center;margin-top:24px;line-height:1.5}
 </style>
 </head>
 <body>
-<div class="box">
-  <h1>🧰 Мини-приложения</h1>
-  <p>Полезные инструменты. Открываются внутри Telegram.</p>
-  <a href="./proxy-access/">🌐 Проверка доступа / гео</a>
-  <a href="./wheel/">🎡 Колесо решений</a>
+<div class="wrap">
+  <h1>🧰 Полезные мини-приложения</h1>
+  <p class="sub">Набор простых инструментов. Выбирай любой — открывается прямо здесь.</p>
+
+  <div class="list">
+    <a class="app" href="./proxy-access/">
+      <span class="ico">🌐</span>
+      <span class="meta"><b>Проверка доступа</b><span>Твой IP, страна, провайдер и доступ к нейросетям</span></span>
+      <span class="arr">›</span>
+    </a>
+    <a class="app" href="./wheel/">
+      <span class="ico">🎡</span>
+      <span class="meta"><b>Колесо решений</b><span>Не можешь выбрать — крути колесо, оно решит</span></span>
+      <span class="arr">›</span>
+    </a>
+  </div>
+
+  <p class="foot">Новые инструменты добавляются сюда же 👀</p>
 </div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+  if (tg){ tg.ready(); tg.expand(); }
+</script>
 </body>
 </html>

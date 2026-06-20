@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Проверка доступа и гео</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --bg: var(--tg-theme-bg-color, #0f1115);
+    --card: var(--tg-theme-secondary-bg-color, #1a1d24);
+    --text: var(--tg-theme-text-color, #f2f4f8);
+    --hint: var(--tg-theme-hint-color, #8b93a7);
+    --accent: var(--tg-theme-button-color, #4f8cff);
+    --accent-text: var(--tg-theme-button-text-color, #ffffff);
+    --ok:#2ecc71; --warn:#ffb020; --bad:#ff5c5c;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{
+    margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg);color:var(--text);
+    padding:20px 16px calc(20px + env(safe-area-inset-bottom));
+    min-height:100vh;
+  }
+  .wrap{max-width:520px;margin:0 auto}
+  h1{font-size:22px;line-height:1.25;margin:8px 0 4px}
+  .sub{color:var(--hint);font-size:14px;margin:0 0 20px}
+  .card{background:var(--card);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+  .card h2{margin:0 0 14px;font-size:16px;display:flex;align-items:center;gap:8px}
+
+  /* гео */
+  .geo-flag{font-size:40px;line-height:1;margin-bottom:6px}
+  .rows{list-style:none;padding:0;margin:0}
+  .rows li{display:flex;gap:8px;padding:9px 0;font-size:14px;border-top:1px solid rgba(255,255,255,.06)}
+  .rows li:first-child{border-top:none}
+  .rows li b{color:var(--hint);font-weight:500}
+  .rows li span{margin-left:auto;color:var(--text);font-weight:600;text-align:right}
+  .skeleton{color:var(--hint)}
+  .skeleton span{opacity:.5}
+
+  /* проверка сайтов */
+  .site{display:flex;align-items:center;gap:10px;padding:11px 0;font-size:15px;border-top:1px solid rgba(255,255,255,.06)}
+  .site:first-child{border-top:none}
+  .site .name{font-weight:600}
+  .site .stat{margin-left:auto;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--hint);flex:none}
+  .dot.ok{background:var(--ok)} .dot.bad{background:var(--bad)} .dot.warn{background:var(--warn)}
+  .spin{width:14px;height:14px;border:2px solid rgba(255,255,255,.2);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* вердикт + CTA */
+  .verdict{display:none}
+  .verdict.show{display:block;animation:fade .3s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .v-badge{display:inline-block;font-size:13px;font-weight:600;padding:5px 12px;border-radius:20px;margin-bottom:10px}
+  .v-badge.warn{background:rgba(255,176,32,.16);color:var(--warn)}
+  .v-badge.ok{background:rgba(46,204,113,.16);color:var(--ok)}
+  .v-text{margin:0 0 14px;font-size:14px;line-height:1.55;color:var(--text)}
+  .cta{
+    display:block;text-align:center;text-decoration:none;
+    background:var(--accent);color:var(--accent-text);
+    font-size:16px;font-weight:700;padding:16px;border-radius:var(--radius);margin-bottom:10px
+  }
+  .note{font-size:12px;color:var(--hint);text-align:center;line-height:1.5;margin:6px 4px 0}
+  .recheck{display:block;width:100%;background:transparent;color:var(--hint);
+    border:1px solid var(--card);padding:12px;border-radius:var(--radius);font-size:14px;cursor:pointer;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🌐 Проверка доступа</h1>
+  <p class="sub">Покажу твой IP, страну и провайдера — и проверю, открыты ли нейросети.</p>
+
+  <!-- ГЕО -->
+  <div class="card">
+    <h2>📍 Твоё подключение</h2>
+    <div class="geo-flag" id="flag">🌍</div>
+    <ul class="rows" id="geo">
+      <li class="skeleton"><b>IP-адрес</b><span>определяю…</span></li>
+      <li class="skeleton"><b>Страна</b><span>…</span></li>
+      <li class="skeleton"><b>Город</b><span>…</span></li>
+      <li class="skeleton"><b>Провайдер</b><span>…</span></li>
+    </ul>
+  </div>
+
+  <!-- ПРОВЕРКА САЙТОВ -->
+  <div class="card">
+    <h2>🤖 Нейросети в твоей стране</h2>
+    <div id="sites"></div>
+    <p class="note" style="text-align:left;margin-top:12px">
+      Официальная доступность по стране твоего IP. «Не работает напрямую» = сервис не пускает из этой страны, нужен IP другой страны (прокси/VPN).
+    </p>
+  </div>
+
+  <!-- ВЕРДИКТ -->
+  <div class="card verdict" id="verdict">
+    <span class="v-badge" id="v-badge"></span>
+    <p class="v-text" id="v-text"></p>
+    <a class="cta" id="cta" href="#" target="_blank" rel="noopener">Подобрать прокси на proxys.io →</a>
+    <p class="note">Оплата картой РФ, криптой и др. (50+ способов). IP нужной страны — доступ открывается сразу.</p>
+    <button class="recheck" id="recheck">↺ Проверить заново</button>
+  </div>
+</div>
+
+<script>
+  const tg = window.Telegram?.WebApp;
+  if (tg){ tg.ready(); tg.expand(); }
+
+  const REF = "https://proxys.io/?refid=372973";
+  document.getElementById('cta').href = REF;
+
+  // Доступность нейросетей по стране (страны, где сервис официально НЕ работает напрямую).
+  // Определяем по коду страны из гео — это надёжно, без ложных срабатываний.
+  const SITES = [
+    { name: "Claude",     blocked: ["RU","BY","CN","IR","KP","CU","SY","VE"] },
+    { name: "ChatGPT",    blocked: ["RU","BY","CN","IR","KP","CU","SY"] },
+    { name: "Gemini",     blocked: ["RU","BY","CN","IR","KP","CU","SY"] },
+    { name: "Midjourney", blocked: ["RU","CN","IR","KP","CU","SY"] },
+  ];
+
+  const $ = id => document.getElementById(id);
+
+  // ---- ГЕО ----
+  async function loadGeo(){
+    const setRow = (rows) => {
+      $('geo').innerHTML = rows.map(r =>
+        `<li><b>${r[0]}</b><span>${r[1]}</span></li>`).join('');
+    };
+    try{
+      const r = await fetch('https://ipwho.is/?fields=ip,country,country_code,city,flag,connection');
+      const d = await r.json();
+      if (d && d.success !== false){
+        $('flag').textContent = d.flag?.emoji || '🌍';
+        setRow([
+          ['IP-адрес', d.ip || '—'],
+          ['Страна', (d.country || '—') + (d.country_code ? ` (${d.country_code})` : '')],
+          ['Город', d.city || '—'],
+          ['Провайдер', d.connection?.isp || d.connection?.org || '—'],
+        ]);
+        return d.country_code || '';
+      }
+    }catch(e){}
+    // запасной источник
+    try{
+      const r = await fetch('https://ipapi.co/json/');
+      const d = await r.json();
+      $('flag').textContent = '🌍';
+      setRow([
+        ['IP-адрес', d.ip || '—'],
+        ['Страна', (d.country_name || '—') + (d.country ? ` (${d.country})` : '')],
+        ['Город', d.city || '—'],
+        ['Провайдер', d.org || '—'],
+      ]);
+      return d.country || '';
+    }catch(e){
+      setRow([['Не удалось определить', 'проверь интернет']]);
+      return '';
+    }
+  }
+
+  // ---- ДОСТУПНОСТЬ ПО СТРАНЕ ----
+  // cc = код страны; возвращаем число доступных сервисов и рисуем список.
+  function renderSites(cc){
+    const code = (cc || '').toUpperCase();
+    let okCount = 0;
+    $('sites').innerHTML = SITES.map(s => {
+      const blocked = code && s.blocked.includes(code);
+      if (!blocked) okCount++;
+      const stat = !code
+        ? `<span class="dot warn"></span>Не определено`
+        : blocked
+          ? `<span class="dot bad"></span>Не работает напрямую`
+          : `<span class="dot ok"></span>Доступна`;
+      return `<div class="site"><span class="name">${s.name}</span><span class="stat">${stat}</span></div>`;
+    }).join('');
+    return okCount;
+  }
+
+  // ---- ВЕРДИКТ ----
+  function verdict(cc, okCount){
+    const total = SITES.length;
+    const ru = ['RU','BY'].includes((cc||'').toUpperCase());
+    const v = $('verdict'), badge = $('v-badge'), text = $('v-text');
+    v.classList.add('show');
+
+    if (okCount < total){
+      badge.className = 'v-badge warn';
+      badge.textContent = ru ? 'Нужен прокси' : 'Доступ неполный';
+      text.textContent = ru
+        ? `Доступно ${okCount} из ${total}. Из твоей страны часть нейросетей не пускает напрямую — прокси с IP США/ЕС открывает их за минуту.`
+        : `Доступно ${okCount} из ${total}. Чтобы открыть остальные — нужен IP страны, где они работают (прокси/VPN).`;
+    } else {
+      badge.className = 'v-badge ok';
+      badge.textContent = 'Доступ есть';
+      text.textContent = ru
+        ? `В твоей стране нейросети доступны (${okCount}/${total}) 👍 Прокси пригодится, если сервис всё же не открывается у провайдера или нужен второй аккаунт.`
+        : `В твоей стране нейросети доступны (${okCount}/${total}). Прокси нужной страны пригодится для второго аккаунта или обхода блокировок провайдера.`;
+    }
+  }
+
+  // ---- ЗАПУСК ----
+  async function run(){
+    $('verdict').classList.remove('show');
+    $('sites').innerHTML = '<div class="site"><span class="name skeleton">Определяю страну…</span><span class="stat"><span class="spin"></span></span></div>';
+    const cc = await loadGeo();
+    const okCount = renderSites(cc);
+    verdict(cc, okCount);
+  }
+
+  $('recheck').addEventListener('click', () => {
+    tg?.HapticFeedback?.impactOccurred?.('light');
+    run();
+  });
+
+  run();
+</script>
+</body>
+</html>

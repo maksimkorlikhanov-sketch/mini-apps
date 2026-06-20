@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- 1) Назови апп -->
+<title>Название аппа</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- 2) Общий дизайн-кит (тема, кнопки, карточки, анимации) -->
+<link rel="stylesheet" href="../assets/app.css">
+<!-- 3) Локальные стили именно этого аппа — по минимуму, всё базовое уже в app.css -->
+<style>
+  /* пример точечного стиля под конкретный апп */
+  .hero{font-size:34px; text-align:center; margin:8px 0 4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ШАПКА -->
+  <h1>🧩 Название аппа</h1>
+  <p class="sub">Короткое описание: какую пользу даёт за 5 секунд.</p>
+
+  <!-- КАРТОЧКА с контентом -->
+  <div class="card">
+    <h2>Блок результата</h2>
+    <div class="hero" id="value">—</div>
+    <ul class="list">
+      <li class="row"><span class="k">Параметр</span><span class="v" id="p1">значение</span></li>
+      <li class="row"><span class="k">Ещё параметр</span><span class="v" id="p2">значение</span></li>
+    </ul>
+  </div>
+
+  <!-- ОСНОВНОЕ ДЕЙСТВИЕ -->
+  <button class="btn btn-primary mb" id="action">Сделать 🎯</button>
+
+  <!-- ВВОД / ЧИПЫ (если нужно) -->
+  <p class="label">Пример ввода</p>
+  <div class="chips mb" id="chips">
+    <span class="chip">Вариант<button aria-label="удалить">×</button></span>
+  </div>
+  <div class="field mb">
+    <input id="inp" type="text" placeholder="Добавить…" maxlength="24" autocomplete="off">
+    <button id="add">＋</button>
+  </div>
+
+  <!-- РЕФКА (фоновый блок). Подставь нужную ссылку и текст. -->
+  <a class="ref" href="https://ССЫЛКА-РЕФКИ" target="_blank" rel="noopener">
+    <span class="ico">💡</span>
+    <span class="t"><b>Заголовок предложения</b><span>короткий поясняющий текст</span></span>
+    <span class="go">Перейти →</span>
+  </a>
+
+</div>
+
+<!-- МОДАЛКА РЕЗУЛЬТАТА (по желанию) -->
+<div class="overlay" id="result">
+  <div class="modal">
+    <div class="em">🎉</div>
+    <h2 class="muted small" style="margin:8px 0 2px">Готово</h2>
+    <p style="font-size:24px; font-weight:800; margin:0 0 18px" id="resultText">—</p>
+    <button class="btn btn-primary mb" id="again">Ещё раз</button>
+    <button class="btn btn-ghost" id="close">Закрыть</button>
+  </div>
+</div>
+
+<!-- общие хелперы: App.haptic(), App.toast(), App.openModal()/closeModal(), $() -->
+<script src="../assets/app.js"></script>
+<script>
+  // ---- логика конкретного аппа ----
+
+  $('#action').addEventListener('click', () => {
+    App.haptic('success');          // вибро
+    $('#value').textContent = '42';  // обнови контент
+    App.toast('Сделано!');           // всплывашка
+    // или показать модалку:
+    // $('#resultText').textContent = 'Результат';
+    // App.openModal('result');
+  });
+
+  $('#add').addEventListener('click', () => App.toast('Добавлено'));
+  $('#inp').addEventListener('keydown', e => { if(e.key === 'Enter') $('#add').click(); });
+
+  $('#again').addEventListener('click', () => App.closeModal('result'));
+  $('#close').addEventListener('click', () => App.closeModal('result'));
+  $('#result').addEventListener('click', e => { if(e.target.id === 'result') App.closeModal('result'); });
+</script>
+</body>
+</html>
